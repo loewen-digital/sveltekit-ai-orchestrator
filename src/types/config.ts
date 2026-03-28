@@ -1,4 +1,5 @@
 export interface OrchestratorConfig {
+  schemaVersion?: number;
   maxRetriesPerFeature: number;
   maxTotalIterations: number;
   timeoutMinutes: number;
@@ -7,7 +8,10 @@ export interface OrchestratorConfig {
   autoMerge: false;
 }
 
+export const CURRENT_CONFIG_VERSION = 1;
+
 export const DEFAULT_CONFIG: OrchestratorConfig = {
+  schemaVersion: CURRENT_CONFIG_VERSION,
   maxRetriesPerFeature: 3,
   maxTotalIterations: 50,
   timeoutMinutes: 60,

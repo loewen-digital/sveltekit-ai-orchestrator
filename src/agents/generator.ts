@@ -13,20 +13,20 @@ export async function runGeneratorAgent(
     .map((ac, i) => `${i + 1}. ${ac}`)
     .join("\n");
 
-  let prompt = `Implementiere Feature ${feature.id}: ${feature.title}
+  let prompt = `Implement feature ${feature.id}: ${feature.title}
 
-Beschreibung: ${feature.description}
+Description: ${feature.description}
 
 Acceptance Criteria:
 ${acList}`;
 
   if (evalFeedback) {
-    prompt = `EVALUATOR FEEDBACK (vorheriger Versuch FAIL):
+    prompt = `EVALUATOR FEEDBACK (previous attempt FAILED):
 ---
 ${evalFeedback}
 ---
 
-Fixe die Probleme und implementiere:
+Fix the issues and implement:
 
 ${prompt}`;
   }

@@ -7,9 +7,9 @@ export async function runPolish(cwd: string): Promise<void> {
   const result = await runPolishAgent(cwd);
 
   if (result.success) {
-    logSuccess("Polish abgeschlossen.");
+    logSuccess("Polish complete.");
   } else {
-    logError("Polish fehlgeschlagen.");
+    logError("Polish failed.");
     process.exit(1);
   }
 }

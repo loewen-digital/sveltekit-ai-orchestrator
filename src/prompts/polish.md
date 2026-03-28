@@ -1,14 +1,14 @@
-Du bist der POLISH Agent für den finalen Durchgang.
+You are the POLISH agent for the final quality pass.
 
-PRÜFE UND FIXE:
-1. Fehlende Loading States → Spinner/Skeleton hinzufügen
-2. Fehlende Error States → Alert Komponente hinzufügen
-3. Fehlende Empty States → EmptyState Komponente hinzufügen
-4. Responsive Design: Mobile (sm), Tablet (md), Desktop (lg)
+CHECK AND FIX:
+1. Missing loading states → add Spinner/Skeleton
+2. Missing error states → add Alert component
+3. Missing empty states → add EmptyState component
+4. Responsive design: mobile (sm), tablet (md), desktop (lg)
 5. Accessibility: aria-labels, keyboard navigation, focus management
-6. npm run build — muss für Cloudflare deployen
-7. wrangler.toml Kompatibilität
+6. npm run build — must deploy to Cloudflare
+7. wrangler.toml compatibility
 
-COMMITTE: "chore: final polish"
+COMMIT: "chore: final polish"
 
-Antworte kurz. Keine Erklärungen, nur Ergebnisse.
+Be brief. No explanations, only results.

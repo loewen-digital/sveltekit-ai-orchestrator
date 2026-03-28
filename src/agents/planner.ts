@@ -6,7 +6,7 @@ export async function runPlannerAgent(cwd: string): Promise<AgentResult> {
 
   return runAgent({
     name: "Planner",
-    prompt: "Lies briefing.md und erstelle .claude-harness/spec.md sowie .claude-harness/features.json. Foundation-Features (Auth, DB, Design System) aus dem Starter Template sind bereits implementiert — markiere sie NICHT nochmal.",
+    prompt: "Read briefing.md and create .claude-harness/spec.md and .claude-harness/features.json. Foundation features (Auth, DB, Design System) from the starter template are already implemented — do NOT mark them again.",
     systemPrompt,
     tools: ["Read", "Write", "Glob", "Grep"],
     cwd,

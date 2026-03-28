@@ -14,6 +14,11 @@ function getGitHubToken(): string {
   return token;
 }
 
+/** HTTP status codes that should never be retried (client errors except rate limits). */
+function isNonRetryableStatus(status: number): boolean {
+  return status >= 400 && status < 500 && status !== 429;
+}
+
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
@@ -24,7 +29,12 @@ async function fetchWithRetry(
     try {
       const response = await fetch(url, options);
 
-      // Don't retry client errors (4xx) except 429 (rate limit)
+      // Never retry client errors (4xx) except 429 (rate limit)
+      if (isNonRetryableStatus(response.status)) {
+        return response;
+      }
+
+      // Retry on rate limits (429) and server errors (5xx)
       if (
         response.status === 429 ||
         (response.status >= 500 && response.status < 600)
@@ -34,7 +44,7 @@ async function fetchWithRetry(
           ? Number(retryAfter) * 1000
           : Math.min(1000 * 2 ** attempt, 30_000);
         logWarning(
-          `GitHub API ${response.status} — Retry ${attempt + 1}/${maxRetries} in ${delayMs}ms...`,
+          `GitHub API ${response.status} — retry ${attempt + 1}/${maxRetries} in ${delayMs}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
         continue;
@@ -46,7 +56,7 @@ async function fetchWithRetry(
       if (attempt < maxRetries - 1) {
         const delayMs = Math.min(1000 * 2 ** attempt, 30_000);
         logWarning(
-          `GitHub API Netzwerkfehler — Retry ${attempt + 1}/${maxRetries} in ${delayMs}ms...`,
+          `GitHub API network error — retry ${attempt + 1}/${maxRetries} in ${delayMs}ms...`,
         );
         await new Promise((resolve) => setTimeout(resolve, delayMs));
       }

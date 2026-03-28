@@ -15,14 +15,14 @@ export async function analyzeIssue(
 ): Promise<AnalyzeResult> {
   const systemPrompt = loadPrompt("issue-analyzer");
 
-  const prompt = `Analysiere dieses GitHub Issue:
+  const prompt = `Analyze this GitHub issue:
 
 Issue #${issue.number}: ${issue.title}
-Labels: ${issue.labels.join(", ") || "(keine)"}
+Labels: ${issue.labels.join(", ") || "(none)"}
 
 ${issue.body}
 
-Gib NUR valides JSON zurück. Wenn zu unklar: { "NEEDS_CLARIFICATION": "deine Rückfrage" }`;
+Return ONLY valid JSON. If too unclear: { "NEEDS_CLARIFICATION": "your follow-up question" }`;
 
   const result = await runAgent({
     name: `IssueAnalyzer[#${issue.number}]`,
@@ -43,7 +43,7 @@ function parseAnalyzerOutput(output: string, issueNumber: number): AnalyzeResult
     return {
       feature: null,
       needsClarification: true,
-      clarificationMessage: "Der Issue Analyzer konnte keine strukturierte Analyse erstellen. Bitte präzisiere das Issue.",
+      clarificationMessage: "The issue analyzer could not create a structured analysis. Please add more details to the issue.",
     };
   }
 
@@ -80,7 +80,7 @@ function parseAnalyzerOutput(output: string, issueNumber: number): AnalyzeResult
     return {
       feature: null,
       needsClarification: true,
-      clarificationMessage: "Konnte die Issue-Analyse nicht parsen.",
+      clarificationMessage: "Could not parse the issue analysis.",
     };
   }
 }

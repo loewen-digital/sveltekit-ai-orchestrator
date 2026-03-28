@@ -12,5 +12,6 @@ export interface Feature {
 }
 
 export interface FeaturesFile {
+  schemaVersion?: number;
   features: Feature[];
 }

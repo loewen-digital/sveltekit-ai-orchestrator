@@ -1,6 +1,6 @@
-# Maintenance Loop — Automatische Issue-Bearbeitung
-# Trigger: Issues mit bestimmten Labels werden automatisch bearbeitet
-# Konfigurierbar: Labels, Timeout, Secrets
+# Maintenance Loop — Automatic Issue Processing
+# Trigger: Issues with specific labels are automatically processed
+# Configurable: Labels, timeout, secrets
 
 name: Maintenance Loop
 
@@ -8,20 +8,50 @@ on:
   issues:
     types: [opened, labeled]
 
-# Nur ein Maintenance Job gleichzeitig
+# Only one maintenance job at a time per issue
 concurrency:
   group: maintenance-${{ github.event.issue.number }}
   cancel-in-progress: false
 
 jobs:
+  # Pre-filter: Validate the issue before spending API credits
+  pre-check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check issue eligibility
+        id: check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const labels = issue.labels.map(l => l.name);
+            const allowedLabels = ['bug', 'feature', 'change', 'automate'];
+            const hasAllowedLabel = labels.some(l => allowedLabels.includes(l));
+
+            // Skip bot-created issues to prevent loops
+            const author = issue.user.login;
+            const isBotAuthor = author.endsWith('[bot]') || author === 'github-actions';
+
+            if (!hasAllowedLabel) {
+              core.info(`Skipping: no matching label (has: ${labels.join(', ')})`);
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            if (isBotAuthor) {
+              core.info(`Skipping: bot author (${author})`);
+              core.setOutput('should_run', 'false');
+              return;
+            }
+
+            core.info(`Processing issue #${issue.number} by ${author} with labels: ${labels.join(', ')}`);
+            core.setOutput('should_run', 'true');
+
   maintain:
-    # Nur Issues mit diesen Labels werden bearbeitet
-    # Anpassbar: Eigene Labels hinzufügen/entfernen
-    if: >
-      contains(github.event.issue.labels.*.name, 'bug') ||
-      contains(github.event.issue.labels.*.name, 'feature') ||
-      contains(github.event.issue.labels.*.name, 'change') ||
-      contains(github.event.issue.labels.*.name, 'automate')
+    needs: pre-check
+    if: needs.pre-check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
 
@@ -45,8 +75,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx orchestrate maintain ${{ github.event.issue.number }}
 
-      # PR wird via peter-evans/create-pull-request erstellt
-      # Der Orchestrator pushed nur den Branch, erstellt aber keine PR
+      # PR is created via peter-evans/create-pull-request
+      # The orchestrator only pushes the branch, does not create a PR
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v7
         with:
@@ -54,8 +84,8 @@ jobs:
           branch: auto/issue-${{ github.event.issue.number }}
           title: "fix: resolve #${{ github.event.issue.number }}"
           body: |
-            Automatisch generiert für Issue #${{ github.event.issue.number }}
+            Automatically generated for issue #${{ github.event.issue.number }}
 
             ---
-            *Erstellt von sveltekit-orchestrator*
+            *Created by sveltekit-orchestrator*
           labels: automated

@@ -7,6 +7,7 @@ import { DEFAULT_CONFIG } from "../../src/types/config.js";
 
 // Suppress logWarning output during tests
 vi.mock("../../src/utils/logger.js", () => ({
+  logDebug: vi.fn(),
   logWarning: vi.fn(),
   logInfo: vi.fn(),
   logError: vi.fn(),
@@ -14,6 +15,8 @@ vi.mock("../../src/utils/logger.js", () => ({
   logAgent: vi.fn(),
   logPhase: vi.fn(),
   initLogDir: vi.fn(),
+  setLogLevel: vi.fn(),
+  getLogLevel: vi.fn(),
 }));
 
 describe("config", () => {

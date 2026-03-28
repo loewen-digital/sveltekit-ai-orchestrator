@@ -9,22 +9,22 @@ export async function runDiscover(cwd: string): Promise<void> {
   // Check for idea.md
   const ideaPath = join(cwd, "idea.md");
   if (!existsSync(ideaPath)) {
-    logError("idea.md nicht gefunden. Erstelle eine idea.md mit deiner Projektidee.");
+    logError("idea.md not found. Create an idea.md with your project idea.");
     process.exit(1);
   }
 
   // Warn if briefing.md already exists
   const briefingPath = join(cwd, "briefing.md");
   if (existsSync(briefingPath)) {
-    logWarning("briefing.md existiert bereits und wird überschrieben.");
+    logWarning("briefing.md already exists and will be overwritten.");
   }
 
   const result = await runDiscoveryAgent(cwd);
 
   if (result.success) {
-    logSuccess("Discovery abgeschlossen. briefing.md erstellt.");
+    logSuccess("Discovery complete. briefing.md created.");
   } else {
-    logError("Discovery fehlgeschlagen.");
+    logError("Discovery failed.");
     process.exit(1);
   }
 }

@@ -11,6 +11,7 @@ import { runBuild } from "./commands/build.js";
 import { runPolish } from "./commands/polish.js";
 import { runMaintain } from "./commands/maintain.js";
 import { runConfig } from "./commands/config.js";
+import { setLogLevel } from "./utils/logger.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,7 +31,14 @@ const program = new Command();
 program
   .name("orchestrate")
   .description("AI-powered SvelteKit project orchestrator using Claude Agent SDK")
-  .version(getVersion());
+  .version(getVersion())
+  .option("--verbose", "Enable verbose (debug) logging")
+  .option("--quiet", "Only show warnings and errors")
+  .hook("preAction", (thisCommand) => {
+    const opts = thisCommand.opts() as { verbose?: boolean; quiet?: boolean };
+    if (opts.verbose) setLogLevel("debug");
+    else if (opts.quiet) setLogLevel("error");
+  });
 
 program
   .command("init <project-name>")
@@ -58,7 +66,8 @@ program
   .command("build")
   .description("Autonomous build loop: planning → generator ↔ evaluator")
   .option("--skip-planning", "Skip the planning phase")
-  .action(async (options: { skipPlanning?: boolean }) => {
+  .option("--dry-run", "Preview what would be built without running agents")
+  .action(async (options: { skipPlanning?: boolean; dryRun?: boolean }) => {
     await runBuild(process.cwd(), options);
   });
 

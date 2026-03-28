@@ -9,14 +9,14 @@ export async function runPlan(cwd: string): Promise<void> {
 
   const briefingPath = join(cwd, "briefing.md");
   if (!existsSync(briefingPath)) {
-    logError("briefing.md nicht gefunden. Führe erst 'orchestrate discover' aus.");
+    logError("briefing.md not found. Run 'orchestrate discover' first.");
     process.exit(1);
   }
 
   const result = await runPlannerAgent(cwd);
 
   if (!result.success) {
-    logError("Planning fehlgeschlagen.");
+    logError("Planning failed.");
     process.exit(1);
   }
 
@@ -27,8 +27,8 @@ export async function runPlan(cwd: string): Promise<void> {
     categories.set(f.category, (categories.get(f.category) ?? 0) + 1);
   }
 
-  logSuccess(`Planning abgeschlossen: ${features.length} Features geplant`);
+  logSuccess(`Planning complete: ${features.length} features planned`);
   for (const [cat, count] of categories) {
-    logInfo(`  ${cat}: ${count} Features`);
+    logInfo(`  ${cat}: ${count} features`);
   }
 }

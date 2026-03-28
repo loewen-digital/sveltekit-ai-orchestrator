@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { mkdtempSync, rmSync, mkdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -8,8 +8,23 @@ import {
   addFeature,
   updateFeature,
   getNextFeature,
+  detectCircularDependencies,
 } from "../../src/utils/features.js";
 import type { Feature } from "../../src/types/feature.js";
+
+// Mock logger to suppress output
+vi.mock("../../src/utils/logger.js", () => ({
+  logDebug: vi.fn(),
+  logWarning: vi.fn(),
+  logInfo: vi.fn(),
+  logError: vi.fn(),
+  logSuccess: vi.fn(),
+  logAgent: vi.fn(),
+  logPhase: vi.fn(),
+  initLogDir: vi.fn(),
+  setLogLevel: vi.fn(),
+  getLogLevel: vi.fn(),
+}));
 
 function makeFeature(overrides: Partial<Feature> = {}): Feature {
   return {
@@ -56,7 +71,7 @@ describe("features", () => {
       join(tmpDir, ".claude-harness", "features.json"),
       "utf-8",
     );
-    expect(raw).toContain('  "features"');
+    expect(raw).toContain('  "schemaVersion"');
   });
 
   it("addFeature appends to existing features", () => {
@@ -111,5 +126,34 @@ describe("features", () => {
   it("getNextFeature returns undefined when all done", () => {
     writeFeatures(tmpDir, [makeFeature({ passes: true })]);
     expect(getNextFeature(tmpDir)).toBeUndefined();
+  });
+
+  it("detects no cycles in acyclic graph", () => {
+    const features = [
+      makeFeature({ id: "F001" }),
+      makeFeature({ id: "F002", depends_on: ["F001"] }),
+      makeFeature({ id: "F003", depends_on: ["F002"] }),
+    ];
+    expect(detectCircularDependencies(features)).toEqual([]);
+  });
+
+  it("detects simple two-node cycle", () => {
+    const features = [
+      makeFeature({ id: "F001", depends_on: ["F002"] }),
+      makeFeature({ id: "F002", depends_on: ["F001"] }),
+    ];
+    const cyclic = detectCircularDependencies(features);
+    expect(cyclic).toContain("F001");
+    expect(cyclic).toContain("F002");
+  });
+
+  it("getNextFeature skips features in cycles", () => {
+    writeFeatures(tmpDir, [
+      makeFeature({ id: "F001", priority: 1, depends_on: ["F002"] }),
+      makeFeature({ id: "F002", priority: 2, depends_on: ["F001"] }),
+      makeFeature({ id: "F003", priority: 3 }),
+    ]);
+    const next = getNextFeature(tmpDir);
+    expect(next?.id).toBe("F003");
   });
 });

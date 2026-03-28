@@ -1,6 +1,6 @@
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import { type OrchestratorConfig, DEFAULT_CONFIG } from "../types/config.js";
+import { type OrchestratorConfig, DEFAULT_CONFIG, CURRENT_CONFIG_VERSION } from "../types/config.js";
 import { logWarning } from "./logger.js";
 
 function clampWithWarning(
@@ -13,14 +13,14 @@ function clampWithWarning(
   if (typeof value !== "number" || !Number.isFinite(value)) {
     if (value !== undefined) {
       logWarning(
-        `Config "${name}" ist keine gültige Zahl (${String(value)}), nutze Default: ${fallback}`,
+        `Config "${name}" is not a valid number (${String(value)}), using default: ${fallback}`,
       );
     }
     return fallback;
   }
   if (value < min || value > max) {
     logWarning(
-      `Config "${name}" = ${value} ist außerhalb des Bereichs [${min}–${max}], clamped.`,
+      `Config "${name}" = ${value} is outside range [${min}–${max}], clamped.`,
     );
     return Math.max(min, Math.min(max, value));
   }
@@ -37,15 +37,28 @@ export function loadConfig(cwd: string): OrchestratorConfig {
   const raw = readFileSync(configPath, "utf-8");
   const userConfig = JSON.parse(raw) as Partial<OrchestratorConfig>;
 
-  return validateConfig({
+  const config = validateConfig({
     ...DEFAULT_CONFIG,
     ...userConfig,
     autoMerge: false, // Always enforce false
   });
+
+  // Migrate config if schema version is outdated
+  if (!userConfig.schemaVersion || userConfig.schemaVersion < CURRENT_CONFIG_VERSION) {
+    logWarning(`Migrated config.json from schema v${userConfig.schemaVersion ?? 0} to v${CURRENT_CONFIG_VERSION}`);
+    const dir = join(cwd, ".claude-harness");
+    if (!existsSync(dir)) {
+      mkdirSync(dir, { recursive: true });
+    }
+    writeFileSync(configPath, JSON.stringify({ ...config, schemaVersion: CURRENT_CONFIG_VERSION }, null, 2) + "\n");
+  }
+
+  return config;
 }
 
 function validateConfig(config: OrchestratorConfig): OrchestratorConfig {
   return {
+    schemaVersion: CURRENT_CONFIG_VERSION,
     maxRetriesPerFeature: clampWithWarning(
       "maxRetriesPerFeature",
       config.maxRetriesPerFeature,

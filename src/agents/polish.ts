@@ -6,7 +6,7 @@ export async function runPolishAgent(cwd: string): Promise<AgentResult> {
 
   return runAgent({
     name: "Polish",
-    prompt: "Führe den finalen Polish-Durchgang durch: Loading States, Error States, Responsive Design, Accessibility, Build-Check.",
+    prompt: "Run the final polish pass: loading states, error states, responsive design, accessibility, build check.",
     systemPrompt,
     tools: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
     cwd,

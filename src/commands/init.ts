@@ -4,43 +4,50 @@ import {
   writeFileSync,
   cpSync,
   readFileSync,
+  readdirSync,
 } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { logInfo, logSuccess, logError, logPhase } from "../utils/logger.js";
+import { logInfo, logSuccess, logError, logWarning, logPhase } from "../utils/logger.js";
 
 const TEMPLATE_REPO = "loewen-digital/sveltekit-ai-starter-template";
+
+/** Minimal files/dirs expected from the starter template. */
+const EXPECTED_TEMPLATE_FILES = ["package.json", "src"];
 
 export async function runInit(
   projectName: string,
   options: { force?: boolean },
 ): Promise<void> {
-  logPhase("Init: Neues Projekt erstellen");
+  logPhase("Init: Create New Project");
 
   const projectDir = join(process.cwd(), projectName);
 
   // Check if directory exists
   if (existsSync(projectDir) && !options.force) {
     logError(
-      `Verzeichnis "${projectName}" existiert bereits. Nutze --force zum Überschreiben.`,
+      `Directory "${projectName}" already exists. Use --force to overwrite.`,
     );
     process.exit(1);
   }
 
   try {
     // Clone template via degit
-    logInfo(`Template von ${TEMPLATE_REPO} klonen...`);
+    logInfo(`Cloning template from ${TEMPLATE_REPO}...`);
     execSync(`npx degit ${TEMPLATE_REPO} "${projectName}"`, {
       stdio: "inherit",
       cwd: process.cwd(),
     });
 
+    // Validate cloned template
+    validateTemplate(projectDir);
+
     // Install dependencies
-    logInfo("npm install...");
+    logInfo("Running npm install...");
     execSync("npm install", { stdio: "inherit", cwd: projectDir });
 
     // Install orchestrator as devDependency
-    logInfo("Orchestrator als devDependency installieren...");
+    logInfo("Installing orchestrator as devDependency...");
     execSync("npm install --save-dev @loewen-digital/sveltekit-orchestrator", {
       stdio: "inherit",
       cwd: projectDir,
@@ -54,41 +61,41 @@ export async function runInit(
     // Create placeholder files
     writeFileSync(
       join(projectDir, "briefing.md"),
-      `# Projekt: ${projectName}
+      `# Project: ${projectName}
 
-<!-- Fülle dieses Briefing aus oder nutze "npx orchestrate discover" -->
+<!-- Fill out this briefing or use "npx orchestrate discover" -->
 
-## Was / Für wen / Warum
-<!-- Was baut ihr? Wer nutzt es? Warum braucht man das? -->
+## What / For Whom / Why
+<!-- What are you building? Who uses it? Why is it needed? -->
 
-## Tech-Entscheidungen
-<!-- Plattform, DB, Auth, Deployment, etc. -->
+## Tech Decisions
+<!-- Platform, DB, auth, deployment, etc. -->
 
 ## Features
 ### Feature 1
 - [ ] Acceptance Criterion 1
 - [ ] Acceptance Criterion 2
 
-## Explizit Out of Scope
-<!-- Was wird NICHT gebaut -->
+## Explicitly Out of Scope
+<!-- What will NOT be built -->
 `,
     );
 
     writeFileSync(
       join(projectDir, "idea.md"),
-      `# Projektidee
+      `# Project Idea
 
-<!-- Beschreibe deine Idee hier. Nutze dann "npx orchestrate discover"
-     für eine geführte Discovery Phase. -->
+<!-- Describe your idea here. Then use "npx orchestrate discover"
+     for a guided discovery phase. -->
 
-## Kernidee
-<!-- Was ist das Problem? Wie soll die App es lösen? -->
+## Core Idea
+<!-- What is the problem? How should the app solve it? -->
 
-## Zielgruppe
-<!-- Wer nutzt die App? -->
+## Target Audience
+<!-- Who uses the app? -->
 
 ## MVP Features
-<!-- Was muss die erste Version können? -->
+<!-- What must the first version be able to do? -->
 `,
     );
 
@@ -100,7 +107,7 @@ export async function runInit(
     addOrchestrateScripts(projectDir);
 
     // Git init + initial commit
-    logInfo("Git initialisieren...");
+    logInfo("Initializing git...");
     execSync("git init", { cwd: projectDir, stdio: "pipe" });
     execSync("git add -A", { cwd: projectDir, stdio: "pipe" });
     execSync(
@@ -111,18 +118,37 @@ export async function runInit(
       },
     );
 
-    logSuccess(`Projekt "${projectName}" erstellt!`);
+    logSuccess(`Project "${projectName}" created!`);
     console.log(`
-📋 Nächste Schritte:
+📋 Next steps:
   cd ${projectName}
-  npx orchestrate discover    # Interaktive Discovery Phase
-  npx orchestrate build       # Autonomer Build-Prozess
+  npx orchestrate discover    # Interactive discovery phase
+  npx orchestrate build       # Autonomous build process
 `);
   } catch (error) {
     logError(
-      `Init fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`,
+      `Init failed: ${error instanceof Error ? error.message : String(error)}`,
     );
     process.exit(1);
+  }
+}
+
+function validateTemplate(projectDir: string): void {
+  const missing = EXPECTED_TEMPLATE_FILES.filter(
+    (f) => !existsSync(join(projectDir, f)),
+  );
+  if (missing.length > 0) {
+    logWarning(
+      `Template validation: missing expected files/dirs: ${missing.join(", ")}. The template may have changed or cloned incompletely.`,
+    );
+  }
+
+  // Verify it looks like a Node project
+  const entries = readdirSync(projectDir);
+  if (entries.length < 2) {
+    throw new Error(
+      "Template clone appears empty or incomplete. Check the template repository.",
+    );
   }
 }
 

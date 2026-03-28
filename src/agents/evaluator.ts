@@ -19,16 +19,16 @@ export async function runEvaluatorAgent(
     .map((ac, i) => `${i + 1}. ${ac}`)
     .join("\n");
 
-  const prompt = `Evaluiere Feature ${feature.id}: ${feature.title}
+  const prompt = `Evaluate feature ${feature.id}: ${feature.title}
 
 Acceptance Criteria:
 ${acList}
 
-Teste jedes Criterion. Schreibe .claude-harness/eval-report.md mit dem Report.
+Test each criterion. Write .claude-harness/eval-report.md with the report.
 
-WICHTIG: Die LETZTE Zeile der eval-report.md MUSS exakt so aussehen (nichts davor, nichts danach auf der Zeile):
+IMPORTANT: The LAST line of eval-report.md MUST look exactly like this (nothing before, nothing after on the line):
 VERDICT: PASS
-oder
+or
 VERDICT: FAIL`;
 
   const result = await runAgent({
@@ -57,7 +57,7 @@ export function parseVerdict(output: string, cwd?: string): "PASS" | "FAIL" {
       if (lastLine === "VERDICT: PASS") return "PASS";
       if (lastLine === "VERDICT: FAIL") return "FAIL";
       logWarning(
-        `eval-report.md letzte Zeile ist kein gültiges Verdict: "${lastLine}"`,
+        `eval-report.md last line is not a valid verdict: "${lastLine}"`,
       );
     }
   }
@@ -71,6 +71,6 @@ export function parseVerdict(output: string, cwd?: string): "PASS" | "FAIL" {
   }
 
   // Default to FAIL if no verdict found
-  logWarning("Kein VERDICT gefunden — Default: FAIL");
+  logWarning("No VERDICT found — defaulting to FAIL");
   return "FAIL";
 }

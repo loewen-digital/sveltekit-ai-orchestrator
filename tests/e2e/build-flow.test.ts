@@ -14,6 +14,7 @@ import {
   readFeatures,
   getNextFeature,
   updateFeature,
+  detectCircularDependencies,
 } from "../../src/utils/features.js";
 import { appendProgress, readProgress } from "../../src/utils/progress.js";
 import { loadConfig } from "../../src/utils/config.js";
@@ -21,6 +22,7 @@ import type { Feature } from "../../src/types/feature.js";
 
 // Mock logger to suppress output
 vi.mock("../../src/utils/logger.js", () => ({
+  logDebug: vi.fn(),
   logWarning: vi.fn(),
   logInfo: vi.fn(),
   logError: vi.fn(),
@@ -28,6 +30,8 @@ vi.mock("../../src/utils/logger.js", () => ({
   logAgent: vi.fn(),
   logPhase: vi.fn(),
   initLogDir: vi.fn(),
+  setLogLevel: vi.fn(),
+  getLogLevel: vi.fn(),
 }));
 
 function makeFeature(overrides: Partial<Feature> = {}): Feature {
@@ -75,23 +79,21 @@ describe("build flow (e2e, no Agent SDK)", () => {
 
     // Simulate: generator runs, evaluator says PASS
     updateFeature(tmpDir, "F001", { passes: true });
-    appendProgress(tmpDir, "✅ F001 Auth System — PASS (Versuch 1)");
+    appendProgress(tmpDir, "✅ F001 Auth System — PASS (attempt 1)");
 
     // Iteration 2: F002 is now unblocked (depends_on F001 which passed)
-    // But F003 has lower priority (3 vs 2)... actually F002 has priority 2, F003 has priority 3
-    // So F002 should be next
     const second = getNextFeature(tmpDir);
     expect(second?.id).toBe("F002");
 
     updateFeature(tmpDir, "F002", { passes: true });
-    appendProgress(tmpDir, "✅ F002 Dashboard — PASS (Versuch 1)");
+    appendProgress(tmpDir, "✅ F002 Dashboard — PASS (attempt 1)");
 
     // Iteration 3: F003
     const third = getNextFeature(tmpDir);
     expect(third?.id).toBe("F003");
 
     updateFeature(tmpDir, "F003", { passes: true });
-    appendProgress(tmpDir, "✅ F003 Settings — PASS (Versuch 1)");
+    appendProgress(tmpDir, "✅ F003 Settings — PASS (attempt 1)");
 
     // No more features
     expect(getNextFeature(tmpDir)).toBeUndefined();
@@ -113,11 +115,11 @@ describe("build flow (e2e, no Agent SDK)", () => {
     expect(feature).toBeDefined();
 
     // Attempt 1: FAIL
-    appendProgress(tmpDir, `❌ ${feature.id} — FAIL (Versuch 1)`);
+    appendProgress(tmpDir, `❌ ${feature.id} — FAIL (attempt 1)`);
 
     // Attempt 2: PASS
     updateFeature(tmpDir, feature.id, { passes: true });
-    appendProgress(tmpDir, `✅ ${feature.id} — PASS (Versuch 2)`);
+    appendProgress(tmpDir, `✅ ${feature.id} — PASS (attempt 2)`);
 
     // Feature is done
     expect(getNextFeature(tmpDir)).toBeUndefined();
@@ -132,7 +134,7 @@ describe("build flow (e2e, no Agent SDK)", () => {
 
     // Simulate F001 failing all retries
     updateFeature(tmpDir, "F001", { skipped: true });
-    appendProgress(tmpDir, "⏭️ F001 — SKIPPED nach 3 Versuchen");
+    appendProgress(tmpDir, "⏭️ F001 — SKIPPED after 3 attempts");
 
     // F002 should still be available
     const next = getNextFeature(tmpDir);
@@ -150,7 +152,6 @@ describe("build flow (e2e, no Agent SDK)", () => {
 
     // Skip F001 — F002 stays blocked because dep didn't pass
     updateFeature(tmpDir, "F001", { skipped: true });
-    // F002 depends on F001 which is skipped (not passed), so it should not be available
     const features = readFeatures(tmpDir);
     const f001 = features.find((f) => f.id === "F001")!;
     expect(f001.skipped).toBe(true);
@@ -178,5 +179,52 @@ describe("build flow (e2e, no Agent SDK)", () => {
     // Write progress
     appendProgress(tmpDir, "Test entry");
     expect(readProgress(tmpDir)).toContain("Test entry");
+  });
+
+  it("detects circular dependencies and skips affected features", () => {
+    writeFeatures(tmpDir, [
+      makeFeature({ id: "F001", priority: 1, depends_on: ["F002"] }),
+      makeFeature({ id: "F002", priority: 2, depends_on: ["F001"] }),
+      makeFeature({ id: "F003", priority: 3 }),
+    ]);
+
+    // F001 and F002 form a cycle — only F003 should be available
+    const next = getNextFeature(tmpDir);
+    expect(next?.id).toBe("F003");
+  });
+
+  it("detectCircularDependencies identifies cycle members", () => {
+    const features = [
+      makeFeature({ id: "F001", depends_on: ["F002"] }),
+      makeFeature({ id: "F002", depends_on: ["F003"] }),
+      makeFeature({ id: "F003", depends_on: ["F001"] }),
+      makeFeature({ id: "F004" }), // Not in cycle
+    ];
+
+    const cyclic = detectCircularDependencies(features);
+    expect(cyclic).toContain("F001");
+    expect(cyclic).toContain("F002");
+    expect(cyclic).toContain("F003");
+    expect(cyclic).not.toContain("F004");
+  });
+
+  it("migrates features.json without schemaVersion", () => {
+    // Write old-format features.json (no schemaVersion)
+    writeFileSync(
+      join(tmpDir, ".claude-harness", "features.json"),
+      JSON.stringify({
+        features: [
+          makeFeature({ id: "F001" }),
+        ],
+      }),
+    );
+
+    const features = readFeatures(tmpDir);
+    expect(features).toHaveLength(1);
+
+    // After reading, the file should have been migrated with schemaVersion
+    const raw = readFileSync(join(tmpDir, ".claude-harness", "features.json"), "utf-8");
+    const data = JSON.parse(raw) as { schemaVersion?: number };
+    expect(data.schemaVersion).toBe(1);
   });
 });

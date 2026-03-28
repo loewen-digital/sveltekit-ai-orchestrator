@@ -17,20 +17,25 @@ export {
   addFeature,
   updateFeature,
   getNextFeature,
+  detectCircularDependencies,
 } from "./utils/features.js";
 export { appendProgress, readProgress } from "./utils/progress.js";
 export { loadConfig, formatConfig } from "./utils/config.js";
 export { fetchIssue, postComment, getRepoInfo } from "./utils/github.js";
 export {
+  logDebug,
   logInfo,
   logSuccess,
   logError,
   logWarning,
   logAgent,
   logPhase,
+  setLogLevel,
+  getLogLevel,
 } from "./utils/logger.js";
+export type { LogLevel } from "./utils/logger.js";
 
 export type { Feature, FeaturesFile } from "./types/feature.js";
 export type { OrchestratorConfig } from "./types/config.js";
-export { DEFAULT_CONFIG } from "./types/config.js";
+export { DEFAULT_CONFIG, CURRENT_CONFIG_VERSION } from "./types/config.js";
 export type { GitHubIssue, RepoInfo } from "./types/github.js";
