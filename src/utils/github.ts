@@ -1,13 +1,58 @@
 import { execSync } from "node:child_process";
-import { logInfo, logError } from "./logger.js";
+import { logInfo, logError, logWarning } from "./logger.js";
 import type { GitHubIssue, RepoInfo } from "../types/github.js";
 
+let cachedToken: string | undefined;
+
 function getGitHubToken(): string {
+  if (cachedToken) return cachedToken;
   const token = process.env["GITHUB_TOKEN"];
   if (!token) {
     throw new Error("GITHUB_TOKEN environment variable is not set");
   }
+  cachedToken = token;
   return token;
+}
+
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+): Promise<Response> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+
+      // Don't retry client errors (4xx) except 429 (rate limit)
+      if (
+        response.status === 429 ||
+        (response.status >= 500 && response.status < 600)
+      ) {
+        const retryAfter = response.headers.get("retry-after");
+        const delayMs = retryAfter
+          ? Number(retryAfter) * 1000
+          : Math.min(1000 * 2 ** attempt, 30_000);
+        logWarning(
+          `GitHub API ${response.status} — Retry ${attempt + 1}/${maxRetries} in ${delayMs}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+
+      return response;
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (attempt < maxRetries - 1) {
+        const delayMs = Math.min(1000 * 2 ** attempt, 30_000);
+        logWarning(
+          `GitHub API Netzwerkfehler — Retry ${attempt + 1}/${maxRetries} in ${delayMs}ms...`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  throw lastError ?? new Error("GitHub API request failed after retries");
 }
 
 export function getRepoInfo(cwd: string): RepoInfo {
@@ -45,9 +90,11 @@ export async function fetchIssue(
   const token = getGitHubToken();
   const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.repo}/issues/${issueNumber}`;
 
-  logInfo(`Fetching issue #${issueNumber} from ${repoInfo.owner}/${repoInfo.repo}`);
+  logInfo(
+    `Fetching issue #${issueNumber} from ${repoInfo.owner}/${repoInfo.repo}`,
+  );
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github.v3+json",
@@ -64,11 +111,15 @@ export async function fetchIssue(
     if (remaining === "0") {
       throw new Error("GitHub API rate limit exceeded");
     }
-    throw new Error("GitHub API access forbidden — check your token permissions");
+    throw new Error(
+      "GitHub API access forbidden — check your token permissions",
+    );
   }
 
   if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `GitHub API error: ${response.status} ${response.statusText}`,
+    );
   }
 
   const data = (await response.json()) as {
@@ -102,7 +153,7 @@ export async function postComment(
 
   logInfo(`Posting comment on issue #${issueNumber}`);
 
-  const response = await fetch(url, {
+  const response = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -114,7 +165,9 @@ export async function postComment(
   });
 
   if (!response.ok) {
-    logError(`Failed to post comment: ${response.status} ${response.statusText}`);
+    logError(
+      `Failed to post comment: ${response.status} ${response.statusText}`,
+    );
     throw new Error(`GitHub API error: ${response.status}`);
   }
 

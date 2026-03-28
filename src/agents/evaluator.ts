@@ -1,4 +1,7 @@
 import { runAgent, loadPrompt } from "./runner.js";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { logWarning } from "../utils/logger.js";
 import type { Feature } from "../types/feature.js";
 
 export interface EvalResult {
@@ -21,7 +24,12 @@ export async function runEvaluatorAgent(
 Acceptance Criteria:
 ${acList}
 
-Teste jedes Criterion. Schreibe eval-report.md. Letzte Zeile: "VERDICT: PASS" oder "VERDICT: FAIL".`;
+Teste jedes Criterion. Schreibe .claude-harness/eval-report.md mit dem Report.
+
+WICHTIG: Die LETZTE Zeile der eval-report.md MUSS exakt so aussehen (nichts davor, nichts danach auf der Zeile):
+VERDICT: PASS
+oder
+VERDICT: FAIL`;
 
   const result = await runAgent({
     name: `Evaluator[${feature.id}]`,
@@ -32,20 +40,37 @@ Teste jedes Criterion. Schreibe eval-report.md. Letzte Zeile: "VERDICT: PASS" od
     cwd,
   });
 
-  const verdict = parseVerdict(result.output);
+  const verdict = parseVerdict(result.output, cwd);
   return {
     verdict,
     report: result.output,
   };
 }
 
-function parseVerdict(output: string): "PASS" | "FAIL" {
-  // Check last lines for VERDICT
+export function parseVerdict(output: string, cwd?: string): "PASS" | "FAIL" {
+  // Primary: read verdict from eval-report.md (structured, not from agent stdout)
+  if (cwd) {
+    const reportPath = join(cwd, ".claude-harness", "eval-report.md");
+    if (existsSync(reportPath)) {
+      const report = readFileSync(reportPath, "utf-8").trim();
+      const lastLine = report.split("\n").pop()?.trim() ?? "";
+      if (lastLine === "VERDICT: PASS") return "PASS";
+      if (lastLine === "VERDICT: FAIL") return "FAIL";
+      logWarning(
+        `eval-report.md letzte Zeile ist kein gültiges Verdict: "${lastLine}"`,
+      );
+    }
+  }
+
+  // Fallback: parse from agent output (last occurrence, exact line match)
   const lines = output.split("\n").reverse();
   for (const line of lines) {
-    if (line.includes("VERDICT: PASS")) return "PASS";
-    if (line.includes("VERDICT: FAIL")) return "FAIL";
+    const trimmed = line.trim();
+    if (trimmed === "VERDICT: PASS") return "PASS";
+    if (trimmed === "VERDICT: FAIL") return "FAIL";
   }
+
   // Default to FAIL if no verdict found
+  logWarning("Kein VERDICT gefunden — Default: FAIL");
   return "FAIL";
 }

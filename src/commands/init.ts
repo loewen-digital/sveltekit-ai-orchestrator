@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, writeFileSync, cpSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  cpSync,
+  readFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
 import { logInfo, logSuccess, logError, logPhase } from "../utils/logger.js";
@@ -15,7 +21,9 @@ export async function runInit(
 
   // Check if directory exists
   if (existsSync(projectDir) && !options.force) {
-    logError(`Verzeichnis "${projectName}" existiert bereits. Nutze --force zum Überschreiben.`);
+    logError(
+      `Verzeichnis "${projectName}" existiert bereits. Nutze --force zum Überschreiben.`,
+    );
     process.exit(1);
   }
 
@@ -95,10 +103,13 @@ export async function runInit(
     logInfo("Git initialisieren...");
     execSync("git init", { cwd: projectDir, stdio: "pipe" });
     execSync("git add -A", { cwd: projectDir, stdio: "pipe" });
-    execSync('git commit -m "chore: initial setup from sveltekit-ai-starter-template"', {
-      cwd: projectDir,
-      stdio: "pipe",
-    });
+    execSync(
+      'git commit -m "chore: initial setup from sveltekit-ai-starter-template"',
+      {
+        cwd: projectDir,
+        stdio: "pipe",
+      },
+    );
 
     logSuccess(`Projekt "${projectName}" erstellt!`);
     console.log(`
@@ -108,7 +119,9 @@ export async function runInit(
   npx orchestrate build       # Autonomer Build-Prozess
 `);
   } catch (error) {
-    logError(`Init fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`);
+    logError(
+      `Init fehlgeschlagen: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 }
@@ -138,9 +151,10 @@ function copyTemplates(projectDir: string, templatesDir: string): void {
 function addOrchestrateScripts(projectDir: string): void {
   try {
     const pkgPath = join(projectDir, "package.json");
-    const pkg = JSON.parse(
-      execSync(`cat "${pkgPath}"`, { encoding: "utf-8" }),
-    ) as Record<string, unknown>;
+    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as Record<
+      string,
+      unknown
+    >;
     const scripts = (pkg["scripts"] ?? {}) as Record<string, string>;
     scripts["orchestrate:discover"] = "orchestrate discover";
     scripts["orchestrate:build"] = "orchestrate build";

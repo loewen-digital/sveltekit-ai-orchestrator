@@ -22,7 +22,13 @@ export function loadPrompt(promptName: string): string {
   // Try loading from the package's prompts directory
   const possiblePaths = [
     join(import.meta.dirname ?? ".", "prompts", `${promptName}.md`),
-    join(import.meta.dirname ?? ".", "..", "src", "prompts", `${promptName}.md`),
+    join(
+      import.meta.dirname ?? ".",
+      "..",
+      "src",
+      "prompts",
+      `${promptName}.md`,
+    ),
   ];
 
   for (const p of possiblePaths) {
@@ -31,7 +37,9 @@ export function loadPrompt(promptName: string): string {
     }
   }
 
-  throw new Error(`Prompt file not found for: ${promptName}`);
+  throw new Error(
+    `Prompt file not found for: "${promptName}". Tried:\n${possiblePaths.map((p) => `  - ${p}`).join("\n")}`,
+  );
 }
 
 export async function runAgent(options: AgentOptions): Promise<AgentResult> {
@@ -74,7 +82,10 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
       })) {
         if ("result" in message) {
           outputParts.push(message.result);
-          logAgent(name, `Completed with result (${message.result.length} chars)`);
+          logAgent(
+            name,
+            `Completed with result (${message.result.length} chars)`,
+          );
         }
       }
     })();
@@ -88,7 +99,10 @@ export async function runAgent(options: AgentOptions): Promise<AgentResult> {
   }
 
   const output = outputParts.join("\n");
-  logAgent(name, success ? "Agent run completed successfully" : "Agent run failed");
+  logAgent(
+    name,
+    success ? "Agent run completed successfully" : "Agent run failed",
+  );
 
   return { output, success };
 }
