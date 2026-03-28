@@ -1,0 +1,50 @@
+{
+  "name": "@loewen-digital/sveltekit-orchestrator",
+  "version": "0.1.0",
+  "description": "AI-powered SvelteKit project orchestrator using Claude Agent SDK",
+  "type": "module",
+  "bin": {
+    "orchestrate": "./dist/cli.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "templates"
+  ],
+  "scripts": {
+    "dev": "tsx watch src/cli.ts",
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "lint": "eslint . && prettier --check .",
+    "lint:fix": "eslint --fix . && prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
+  },
+  "keywords": [
+    "sveltekit",
+    "ai",
+    "orchestrator",
+    "claude",
+    "agent-sdk"
+  ],
+  "author": "Löwen Digital",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "commander": "^13.0.0",
+    "degit": "^2.8.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

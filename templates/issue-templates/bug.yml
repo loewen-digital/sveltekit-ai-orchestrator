@@ -1,0 +1,49 @@
+name: Bug Report
+description: Einen Fehler melden
+labels: ["bug"]
+body:
+  - type: input
+    id: location
+    attributes:
+      label: Wo tritt der Fehler auf?
+      description: URL, Seite oder Komponente
+      placeholder: z.B. /dashboard, Login-Formular
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Was passiert?
+      description: Beschreibe das aktuelle (fehlerhafte) Verhalten
+      placeholder: "Wenn ich auf 'Speichern' klicke, passiert nichts..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Was sollte passieren?
+      description: Beschreibe das erwartete Verhalten
+      placeholder: "Die Daten sollten gespeichert werden und eine Bestätigung erscheinen"
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria (optional)
+      description: Wenn du konkrete Testkriterien hast
+      placeholder: |
+        - [ ] Speichern-Button speichert die Daten
+        - [ ] Erfolgs-Toast wird angezeigt
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / Logs
+      description: Screenshots oder Console-Logs falls verfügbar
+    validations:
+      required: false

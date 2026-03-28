@@ -1,0 +1,61 @@
+# Maintenance Loop — Automatische Issue-Bearbeitung
+# Trigger: Issues mit bestimmten Labels werden automatisch bearbeitet
+# Konfigurierbar: Labels, Timeout, Secrets
+
+name: Maintenance Loop
+
+on:
+  issues:
+    types: [opened, labeled]
+
+# Nur ein Maintenance Job gleichzeitig
+concurrency:
+  group: maintenance-${{ github.event.issue.number }}
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    # Nur Issues mit diesen Labels werden bearbeitet
+    # Anpassbar: Eigene Labels hinzufügen/entfernen
+    if: >
+      contains(github.event.issue.labels.*.name, 'bug') ||
+      contains(github.event.issue.labels.*.name, 'feature') ||
+      contains(github.event.issue.labels.*.name, 'change') ||
+      contains(github.event.issue.labels.*.name, 'automate')
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Maintenance
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx orchestrate maintain ${{ github.event.issue.number }}
+
+      # PR wird via peter-evans/create-pull-request erstellt
+      # Der Orchestrator pushed nur den Branch, erstellt aber keine PR
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: auto/issue-${{ github.event.issue.number }}
+          title: "fix: resolve #${{ github.event.issue.number }}"
+          body: |
+            Automatisch generiert für Issue #${{ github.event.issue.number }}
+
+            ---
+            *Erstellt von sveltekit-orchestrator*
+          labels: automated

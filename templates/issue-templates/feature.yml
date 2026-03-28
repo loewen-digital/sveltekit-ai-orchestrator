@@ -1,0 +1,43 @@
+name: Feature Request
+description: Ein neues Feature vorschlagen
+labels: ["feature"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Beschreibung
+      description: Was soll das Feature machen?
+      placeholder: "Ein Dashboard das..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Wann ist das Feature fertig? (je konkreter, desto besser)
+      placeholder: |
+        - [ ] User kann X sehen
+        - [ ] User kann Y eingeben
+        - [ ] Daten werden in Z gespeichert
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorität
+      options:
+        - "Hoch — Blocker für Launch"
+        - "Mittel — Wichtig aber kein Blocker"
+        - "Niedrig — Nice to Have"
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Zusätzlicher Kontext
+      description: Mockups, Links, Abhängigkeiten
+    validations:
+      required: false
